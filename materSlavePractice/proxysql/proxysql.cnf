@@ -1,0 +1,36 @@
+datadir="/var/lib/proxysql"
+admin_variables =
+{
+    admin_credentials="admin:admin"
+    mysql_ifaces="0.0.0.0:6032"
+}
+
+mysql_variables =
+{
+    threads=4
+    max_connections=2048
+    default_query_rules=0
+    query_retries_on_failure=1
+}
+
+mysql_servers =
+(
+    { address="master",  port=3306, hostgroup=10, max_connections=200 },  # Master = HG10
+    { address="slave-1", port=3306, hostgroup=20, max_connections=200 },  # Slaves = HG20
+    { address="slave-2", port=3306, hostgroup=20, max_connections=200 },
+    { address="slave-3", port=3306, hostgroup=20, max_connections=200 }
+)
+
+mysql_users =
+(
+    { username = "root", password = "root", default_hostgroup = 10, transaction_persistent = 1 }
+)
+
+mysql_query_rules =
+(
+    # Rule 1: SELECTs → go to slaves (HG20)
+    { rule_id=1, active=1, match_pattern="^SELECT.*", destination_hostgroup=20, apply=1 },
+
+    # Rule 2: All others (INSERT, UPDATE, DELETE, etc.) → stay in master (HG10)
+    { rule_id=2, active=1, match_pattern=".*", destination_hostgroup=10, apply=1 }
+)

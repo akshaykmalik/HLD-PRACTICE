@@ -1,0 +1,118 @@
+services:
+  master:
+    image: mysql:8.0
+    container_name: mysql-master
+    networks:
+      - master-slave-cluster
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommerce
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppass
+    command:
+      --server-id=1
+      --log-bin=mysql-bin
+      --binlog-format=MIXED
+      --binlog-do-db=ecommerce
+      --gtid_mode=ON
+      --enforce-gtid-consistency=ON
+      --default-authentication-plugin=mysql_native_password
+  
+    ports:
+      - "3307:3306"
+    volumes:
+      - master-data:/var/lib/mysql
+      - ./mysql/master-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  slave-1:
+    depends_on:
+      - master
+    image: mysql:8.0
+    container_name: mysql-slave-1
+    networks:
+      - master-slave-cluster
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommerce
+    command: 
+      --server-id=2
+      --read-only=1
+      --gtid_mode=ON
+      --enforce-gtid-consistency=ON
+      --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3308:3306"
+    volumes:
+      - slave-data1:/var/lib/mysql
+      - ./mysql/slave-init.sql:/docker-entrypoint-initdb.d/init.sql:ro 
+
+  slave-2:
+    depends_on:
+      - master
+    image: mysql:8.0
+    container_name: mysql-slave-2
+    networks:
+      - master-slave-cluster
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommerce
+    command: 
+      --server-id=3
+      --read-only=1
+      --gtid_mode=ON
+      --enforce-gtid-consistency=ON
+      --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3309:3306"
+    volumes:
+      - slave-data2:/var/lib/mysql
+      - ./mysql/slave-init.sql:/docker-entrypoint-initdb.d/init.sql:ro 
+
+  slave-3:
+    depends_on:
+      - master
+    image: mysql:8.0
+    container_name: mysql-slave-3
+    networks:
+      - master-slave-cluster
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommerce
+    command: 
+      --server-id=4
+      --read-only=1
+      --gtid_mode=ON
+      --enforce-gtid-consistency=ON
+      --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3310:3306"
+    volumes:
+      - slave-data3:/var/lib/mysql
+      - ./mysql/slave-init.sql:/docker-entrypoint-initdb.d/init.sql:ro 
+
+  proxysql:
+    image: proxysql/proxysql:latest
+    container_name: proxysql
+    networks:
+      - master-slave-cluster
+    ports:
+      - "6032:6032"  # Admin interface
+      - "6033:6033"  # MySQL client interface
+    volumes:
+      - ./proxysql/proxysql.cnf:/etc/proxysql.cnf:ro
+    
+    depends_on:
+      - master
+      - slave-1
+      - slave-2
+      - slave-3
+
+networks:
+  master-slave-cluster:
+    driver: bridge
+
+volumes:
+  master-data:
+  slave-data1:
+  slave-data2:
+  slave-data3:
